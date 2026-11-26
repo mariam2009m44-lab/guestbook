@@ -67,22 +67,29 @@ docker build -t us.icr.io/sn-labs-mariam2009m44/guestbook:v2 .
 docker push us.icr.io/sn-labs-mariam2009m44/guestbook:v2
 ```
 
-Then return to the v1 directory and update the Deployment image:
+Apply the v2 manifest. It changes both the image tag and CPU resources (v1: request 2m / limit 5m; v2: request 5m / limit 10m), creating a Deployment revision that can be inspected in rollout history:
 
 ```bash
-cd /home/project/guestbook/v1/guestbook
-kubectl set image deployment/guestbook guestbook=us.icr.io/sn-labs-mariam2009m44/guestbook:v2
+cd /home/project/guestbook
+kubectl apply -f deployment-v2.yml
 kubectl rollout status deployment/guestbook
 kubectl rollout history deployment/guestbook
 kubectl rollout history deployment/guestbook --revision=2
 ```
 
+If the cluster assigns a revision number other than 2, use the revision shown by `kubectl rollout history`; do not assume a fixed number.
+
 ## Rollback
+
+Roll back to the previous revision shown in the rollout history. If the initial deployment is revision 1:
 
 ```bash
 kubectl rollout undo deployment/guestbook --to-revision=1
+kubectl rollout status deployment/guestbook
 kubectl get rs
 ```
+
+The ReplicaSet output should be captured only after the rollback command completes. Actual revision numbers and ReplicaSet counts depend on the cluster's rollout history.
 
 ## Important notes
 
