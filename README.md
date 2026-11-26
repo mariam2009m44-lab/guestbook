@@ -1,64 +1,92 @@
-# Guestbook (Kubernetes / OpenShift)
+# Guestbook — Kubernetes Final Project
 
-This repository contains the two application versions used by the Guestbook deployment lab.
+Repository for the Guestbook application used in the Skills Network / IBM container and Kubernetes lab.
 
-## Source layout
+## Repository layout
 
-- `v1/guestbook/`: version 1 source, Dockerfile and web assets.
-- `v2/guestbook/`: version 2 source, Dockerfile and web assets.
-- `deployment.yml`: Kubernetes Deployment template for v1.
-- `service.yml`: ClusterIP Service exposing port 3000.
-- `hpa.yml`: CPU-based HorizontalPodAutoscaler.
+- `v1/guestbook/` — Guestbook v1 source, Dockerfile, and Kubernetes Deployment.
+- `v2/guestbook/` — Guestbook v2 source and Dockerfile.
+- `service.yml` — Service exposing the app on port 3000.
+- `hpa.yml` — CPU-based HorizontalPodAutoscaler.
+- `deployment-v2.yml` — v2 Deployment manifest for the rolling update.
 
-## Before building
+## Lab registry namespace
 
-The Docker build context must be the matching version directory:
+The Skills Network terminal showed this IBM Container Registry namespace:
 
-```bash
-cd v1/guestbook
-docker build -t guestbook:v1 .
+```text
+sn-labs-mariam2009m44
 ```
 
-For v2:
+Use this namespace only in the matching Skills Network lab account.
+
+## Build and push v1
+
+From the Cloud IDE terminal:
 
 ```bash
-cd v2/guestbook
-docker build -t guestbook:v2 .
+cd /home/project
+git clone https://github.com/mariam2009m44-lab/guestbook.git
+cd guestbook/v1/guestbook
+docker build -t us.icr.io/sn-labs-mariam2009m44/guestbook:v1 .
+docker push us.icr.io/sn-labs-mariam2009m44/guestbook:v1
+ibmcloud cr images
 ```
 
-## IBM Cloud Container Registry
+The Docker build must run from `v1/guestbook`, because that directory is the build context and contains the Dockerfile and public assets.
 
-Log in to IBM Cloud and identify a namespace that you own:
+## Deploy v1 to Kubernetes
 
-```bash
-ibmcloud login
-ibmcloud cr namespace-list
-```
-
-Replace `REPLACE_WITH_YOUR_ICR_NAMESPACE` in `deployment.yml` with that exact namespace. Tag and push the v1 image using the same namespace:
-
-```bash
-docker tag guestbook:v1 us.icr.io/YOUR_NAMESPACE/guestbook:v1
-docker push us.icr.io/YOUR_NAMESPACE/guestbook:v1
-```
-
-Do not submit placeholder text as a real registry result. Capture the actual output of `ibmcloud cr images`.
-
-## Deploy
-
-After setting the image name in `deployment.yml`:
+From `/home/project/guestbook/v1/guestbook`:
 
 ```bash
 kubectl apply -f deployment.yml
-kubectl apply -f service.yml
-kubectl apply -f hpa.yml
+kubectl apply -f ../../service.yml
+kubectl apply -f ../../hpa.yml
 kubectl get deployment,pods,service,hpa
 ```
 
-The HPA requires a working Kubernetes metrics API and CPU requests on the container. If CPU metrics show `<unknown>`, check the cluster metrics service before testing scaling.
+The manifests use the namespace and image tag shown above. Capture the actual output from your lab; never use sample output as evidence.
 
-## Version 2 and rollback
+## Autoscaling check
 
-Build and push v2 from `v2/guestbook`, update the Deployment image to `guestbook:v2` (using the full registry path), then apply the manifest. Record rollout history and the actual ReplicaSet output before and after rollback.
+```bash
+kubectl get hpa guestbook
+kubectl get hpa guestbook --watch
+```
 
-This repository supplies manifests and source files; terminal output must be captured from the live lab environment.
+The HPA is configured for a 5% CPU utilization target, with a minimum of 1 and maximum of 10 replicas. Scaling depends on the cluster's metrics API and actual CPU load.
+
+## Build and deploy v2
+
+Build and push v2 from its own build context:
+
+```bash
+cd /home/project/guestbook/v2/guestbook
+docker build -t us.icr.io/sn-labs-mariam2009m44/guestbook:v2 .
+docker push us.icr.io/sn-labs-mariam2009m44/guestbook:v2
+```
+
+Then return to the v1 directory and update the Deployment image:
+
+```bash
+cd /home/project/guestbook/v1/guestbook
+kubectl set image deployment/guestbook guestbook=us.icr.io/sn-labs-mariam2009m44/guestbook:v2
+kubectl rollout status deployment/guestbook
+kubectl rollout history deployment/guestbook
+kubectl rollout history deployment/guestbook --revision=2
+```
+
+## Rollback
+
+```bash
+kubectl rollout undo deployment/guestbook --to-revision=1
+kubectl get rs
+```
+
+## Important notes
+
+- This repository contains source files and manifests; it does not contain proof that the image was built, pushed, or deployed.
+- Commands that query the registry or Kubernetes cluster must be run in the active Skills Network Cloud IDE.
+- The optional OpenShift Internal Registry lab is a separate deployment path from the Kubernetes final-project assessment. For the optional lab, import the pushed IBM registry image into an OpenShift ImageStream before deploying it from the OpenShift console.
+- Save screenshots or copy real terminal output for each assessment item after running the corresponding command.
