@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: guestbook
-          image: us.icr.io/REPLACE_WITH_YOUR_ICR_NAMESPACE/guestbook:v1
+          image: us.icr.io/sn-labs-mariam2009m44/guestbook:v1
           imagePullPolicy: Always
           ports:
             - name: http
@@ -30,6 +30,6 @@ spec:
               protocol: TCP
           resources:
             requests:
-              cpu: 20m
+              cpu: 2m
             limits:
-              cpu: 50m
+              cpu: 5m
